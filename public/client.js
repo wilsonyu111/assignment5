@@ -45,10 +45,10 @@ function setup() {
 }
 
 function render() {
-    makeCube(10, 10, 10, wall, 0,0,0);
-    makeSphere(10, earth, 30,0,0);
-    makeCylinder(0.1, 15, 10, wall, -30, 0,0);
-    loadObject(0, 20);
+    makeCube(10, 10, 10, wall, 0, 0, 0);
+    makeSphere(10, earth, 30, 0, 0);
+    makeCylinder(0.1, 15, 10, wall, -30, 0, 0);
+    // loadObject(0, 20);
     loadSkyBox(sky);
     function resizeRendererToDisplaySize(renderer) {
         const canvas = renderer.domElement;
@@ -204,23 +204,81 @@ function makeSphere(radius = 1, image = "", locX, locY, locZ) {
     }
 }
 
-function loadSkyBox(image)
-{
+function loadSkyBox(image) {
     const loader = new THREE.TextureLoader();
     const texture = loader.load(
-      image,
-      () => {
-        const rt = new THREE.WebGLCubeRenderTarget(texture.image.height);
-        rt.fromEquirectangularTexture(renderer, texture);
-        scene.background = rt.texture;
-      });
+        image,
+        () => {
+            const rt = new THREE.WebGLCubeRenderTarget(texture.image.height);
+            rt.fromEquirectangularTexture(renderer, texture);
+            scene.background = rt.texture;
+        });
 }
 
-function spotlight()
-{
-    console.log("spotlight");
+function GUIcontrol() {
+    class ColorGUIHelper {
+        constructor(object, prop) {
+            this.object = object;
+            this.prop = prop;
+        }
+        get value() {
+            return `#${this.object[this.prop].getHexString()}`;
+        }
+        set value(hexString) {
+            this.object[this.prop].set(hexString);
+        }
+    }
+
+    class DegRadHelper {
+        constructor(obj, prop) {
+            this.obj = obj;
+            this.prop = prop;
+        }
+        get value() {
+            return THREE.MathUtils.radToDeg(this.obj[this.prop]);
+        }
+        set value(v) {
+            this.obj[this.prop] = THREE.MathUtils.degToRad(v);
+        }
+    }
+
+    function makeXYZGUI(gui, vector3, name, onChangeFn) {
+        const folder = gui.addFolder(name);
+        folder.add(vector3, 'x', -10, 10).onChange(onChangeFn);
+        folder.add(vector3, 'y', 0, 10).onChange(onChangeFn);
+        folder.add(vector3, 'z', -10, 10).onChange(onChangeFn);
+        folder.open();
+    }
+
+    {
+        const color = 0xFFFFFF;
+        const intensity = 1;
+        const light = new THREE.SpotLight(color, intensity);
+        light.position.set(0, 10, 0);
+        light.target.position.set(-5, 0, 0);
+        scene.add(light);
+        scene.add(light.target);
+
+        const helper = new THREE.SpotLightHelper(light);
+        scene.add(helper);
+
+        function updateLight() {
+            light.target.updateMatrixWorld();
+            helper.update();
+        }
+        updateLight();
+
+        const gui = new GUI();
+        gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('color');
+        gui.add(light, 'intensity', 0, 2, 0.01);
+        gui.add(light, 'distance', 0, 40).onChange(updateLight);
+        gui.add(new DegRadHelper(light, 'angle'), 'value', 0, 90).name('angle').onChange(updateLight);
+        gui.add(light, 'penumbra', 0, 1, 0.01);
+
+        makeXYZGUI(gui, light.position, 'position', updateLight);
+        makeXYZGUI(gui, light.target.position, 'target', updateLight);
+    }
 }
 
 main();
-spotlight();
 
